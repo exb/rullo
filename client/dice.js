@@ -401,6 +401,7 @@
             return;
         }
         var re = /\s*[d](\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*/i;
+        var error = false;
         var ret = { faces: null, bonus: 0 };
 
         const match = re.exec(notation);
@@ -412,7 +413,14 @@
             else ret.bonus -= parseInt(match[4]);
         }
 
-        return ret;
+        if (match[0] !== match.input) {
+            error = true;
+        }
+
+        return {
+            data: ret,
+            error: error,
+        }
     }
 
     this.stringify_notation = function(nn) {
