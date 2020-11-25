@@ -375,6 +375,46 @@
         return ret;
     }
 
+    this.parse_single_notation = function(notation, result) {
+        var re = /\s*[d](\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*/i;
+        var ret = { set: [], constant: 0, result: [], error: false }, res;
+
+        const match = re.exec(notation);
+
+        var type = 'd' + match[1];
+        ret.set.push(type);
+
+        if (match[3] && match[4]) {
+            if (match[3] == '+') ret.constant += parseInt(match[4]);
+            else ret.constant -= parseInt(match[4]);
+        }
+
+        if (result) {
+            ret.result = result;
+        }
+
+        return ret;
+    }
+
+    this.parse_single_notation_ws = function(notation, result) {
+        if (!notation || !notation.length) {
+            return;
+        }
+        var re = /\s*[d](\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*/i;
+        var ret = { faces: null, bonus: 0 };
+
+        const match = re.exec(notation);
+
+        ret.faces = parseInt(match[1]);
+
+        if (match[3] && match[4]) {
+            if (match[3] == '+') ret.bonus += parseInt(match[4]);
+            else ret.bonus -= parseInt(match[4]);
+        }
+
+        return ret;
+    }
+
     this.stringify_notation = function(nn) {
         var dict = {}, notation = '';
         for (var i in nn.set)

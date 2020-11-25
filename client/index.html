@@ -24,16 +24,22 @@
             <a href="login.html" id="logout">Logout</a>
         </h6>
     </div>
-    <div id="wrapper" class="shadow">
-        <div id="board">
+    <div id="wrapper">
+        <div id="board" class="shadow">
             <div id="canvas"></div>
             <div id="notation_container">
-                <input class="notation" type="text" id="set" value="2d20+2d8"></input>
+                <input class="notation" type="text" id="set" value="d20 + 3"></input>
                 <button id="roll_button">Roll</button>
             </div>
         </div>
-        <div id="pane">
+        <div id="pane" class="shadow">
+            <div id="pane_title">
+                Event log
+            </div>
             <div id="player_board">
+                <div class="player_board_connect_event">
+                    Joined the room.
+                </div>
             </div>
         </div>
     </div>
