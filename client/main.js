@@ -170,13 +170,11 @@ function dice_initialize(container) {
         var roll = $t.dice.parse_single_notation_ws(set.value);
 
         if (roll.error) {
-            set.classList.add('invalid');
             roll_button.classList.add('disabled');
             return;
         }
 
         if (!roll.error) {
-            set.classList.remove('invalid');
             roll_button.classList.remove('disabled');
             return;
         }

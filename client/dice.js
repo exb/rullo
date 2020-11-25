@@ -398,13 +398,32 @@
 
     this.parse_single_notation_ws = function(notation, result) {
         if (!notation || !notation.length) {
-            return;
+            return {
+                data: ret,
+                error: true
+            }
         }
         var re = /\s*[d](\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*/i;
         var error = false;
         var ret = { faces: null, bonus: 0 };
 
         const match = re.exec(notation);
+
+        if (!match) {
+            return {
+                data: ret,
+                error: true
+            }
+        }
+
+        var faces = match[1];
+
+        if (this.known_types.indexOf('d' + faces) === -1) {
+            return {
+                data: ret,
+                error: true
+            }
+        }
 
         ret.faces = parseInt(match[1]);
 
