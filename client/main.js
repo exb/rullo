@@ -5,8 +5,7 @@ function dice_initialize(container) {
 
     const storage = window.localStorage;
     const name = storage.getItem('player_name');
-    var url = `ws://dicerz.herokuapp.com/ws?name=${name}`;
-    var ws = new WebSocket(url);
+    var ws;
 
     $t.remove($t.id('loading_text'));
 
@@ -170,7 +169,7 @@ function dice_initialize(container) {
         }
     });
 
-    ws.onmessage = function (evt) {
+    function onMessage(evt) {
         var data = JSON.parse(evt.data);
         var player = data.name;
         var faces = data.faces;
@@ -211,6 +210,10 @@ function dice_initialize(container) {
             window.location.href = 'login.html';
             return;
         }
+
+        var url = `wss://dicerz.herokuapp.com/ws?name=${name}`;
+        ws = new WebSocket(url);
+        ws.onmessage = onMessage;
 
         document.body.style.visibility = 'visible';
     }
