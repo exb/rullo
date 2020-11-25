@@ -24,7 +24,7 @@ body {
     top: 50%;
     transform: translate(-50%, -50%);
     display: flex;
-    border-radius: 11px;
+    align-items: center;
 }
 
 #join {
@@ -67,7 +67,7 @@ body {
     background-color: white;
     outline: 0;
     margin: 0;
-    border-radius: 11px;
+    border-radius: 7px;
     font-family: inherit;
     margin-right: 8px;
 }
@@ -84,11 +84,13 @@ body {
     height: 450px;
     min-height: 450px;
     background: white;
-    border-top-left-radius: 11px;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
 }
 
 #canvas canvas {
-    border-top-left-radius: 11px;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
 }
 
 #pane {
@@ -99,16 +101,24 @@ body {
     background-color: rgba(244, 245, 246, 0.74);
     background-color: #EDEFF0;
     background-color: #EDEDF0;
-    border-top-right-radius: 11px;
-    border-bottom-right-radius: 11px;
+    border-top-right-radius: 7px;
+    border-bottom-right-radius: 7px;
     flex: 1;
     max-width: 100%;
     overflow-y: scroll;
     overflow-x: hidden;
+    height: 85%;
+    font-size: 15px;
+}
+
+#pane_title {
+    color: #63636A;
+    font-weight: 500;
+    margin-left: 12px;
+    margin-bottom: 12px;
 }
 
 #player_board {
-    font-size: 15px;
 }
 
 .player_board_title {
@@ -119,8 +129,19 @@ body {
     font-size: 15px;
 }
 
+.player_board_connect_event {
+    color: #85858A;
+    font-weight: 500;
+    margin-top: 16px;
+    margin-left: 12px;
+}
+
+.player_roll_dice {
+    color: #BBBBBD;
+}
+
 .player_roll {
-    padding: 8px 12px;
+    padding: 6px 12px;
     border-radius: 8px;
     box-sizing: border-box;
     display: flex;
@@ -168,6 +189,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: inline-flex;
 }
 
 .player_name {
@@ -197,15 +219,16 @@ body {
     background-color: rgba(38, 42, 45, 0.81);
     outline: 0;
     margin: 0;
-    border-bottom-left-radius: 11px;
+    border-bottom-left-radius: 7px;
+    border-bottom-right-radius: 7px;
     font-family: inherit;
 }
 
 #roll_button {
     position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
     padding: 12px 24px;
     padding: 9px 20px;
     font-family: inherit;

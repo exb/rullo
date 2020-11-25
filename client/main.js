@@ -5,6 +5,8 @@ function dice_initialize(container) {
 
     const storage = window.localStorage;
     const name = storage.getItem('player_name');
+    var url = `ws://dicerz.herokuapp.com/ws?name=${name}`;
+    var ws = new WebSocket(url);
 
     $t.remove($t.id('loading_text'));
 
@@ -72,19 +74,11 @@ function dice_initialize(container) {
     }
 
     function notation_getter() {
-        return $t.dice.parse_notation(set.value);
+        return $t.dice.parse_single_notation(set.value, [3]);
     }
 
     function after_roll(notation, result) {
-        event(name, result.join(' '));
-        if (params.chromakey || params.noresult) return;
-        var res = result.join(' ');
-        if (notation.constant) {
-            if (notation.constant > 0) res += ' +' + notation.constant;
-            else res += ' -' + Math.abs(notation.constant);
-        }
-        if (result.length > 1) res += ' = ' +
-                (result.reduce(function(s, a) { return s + a; }) + notation.constant);
+        event(name, notation);
     }
 
     function hideControl() {
@@ -111,7 +105,16 @@ function dice_initialize(container) {
         }
     }
 
-    function event(player, roll_result) {
+    function event(player, response) {
+        var roll_result = response.result;
+        var dice = (response.set[0] || '').substring(1).trim();
+        var bonus = '';
+
+        if (response.constant) {
+            if (response.constant > 0) bonus += '+' + response.constant;
+            else bonus += '-' + Math.abs(response.constant);
+        }
+
         var roll = document.createElement('div');
         roll.className = "player_roll shadow";
         roll.innerHTML = `
@@ -119,7 +122,12 @@ function dice_initialize(container) {
                 ${player}
             </div>
             <div class="player_roll_result">
-                ${roll_result}
+                <span>
+                    ${roll_result}
+                </span>
+                <span class="player_roll_dice">
+                    ${'/' + dice + bonus}
+                </span>
             </div>
         `;
 
@@ -141,7 +149,7 @@ function dice_initialize(container) {
     $t.bind(roll_button, ['mouseup', 'touchend'], function(ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        box.start_throw(notation_getter, before_roll, after_roll);
+        diceRoll();
     });
 
     $t.bind(logout, ['mouseup', 'touchend'], function(ev) {
@@ -158,25 +166,53 @@ function dice_initialize(container) {
         if (evt.keyCode === 13) {
             evt.preventDefault();
             evt.stopPropagation();
-            box.start_throw(notation_getter, before_roll, after_roll);
+            diceRoll();
         }
     });
 
+    ws.onmessage = function (evt) {
+        var data = JSON.parse(evt.data);
+        var player = data.name;
+        var faces = data.faces;
+        var result = data.result;
+        var bonus = data.bonus;
+        const notation = { set: ['d' + faces], constant: bonus, result: [result], error: false };
+
+        function notation_getter(response) {
+            return notation;
+        }
+
+        if (player === name) {
+            box.start_throw(notation_getter, before_roll, after_roll);
+        } else {
+            event(player, notation);
+        }
+    }
+
+    function diceRoll() {
+        if (box.rolling) {
+            return;
+        }
+
+        var roll = $t.dice.parse_single_notation_ws(set.value);
+        if (roll) {
+            ws.send(JSON.stringify(roll));
+        }
+    }
+
     function reset() {
         box.clear();
-        set.value = '4d6';
+        set.value = 'd20 + 3';
         player_board.innerHtml = '';
     }
 
     function init() {
         if (!name) {
-            console.log('login', name);
             window.location.href = 'login.html';
             return;
         }
 
         document.body.style.visibility = 'visible';
-        box.start_throw(notation_getter, before_roll, after_roll);
     }
 
     init();
