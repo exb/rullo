@@ -1,8 +1,6 @@
 "use strict";
 
 function dice_initialize(container) {
-    document.body.style.visibility = 'hidden';
-
     const storage = window.localStorage;
     const name = storage.getItem('player_name');
     var ws;
@@ -207,7 +205,7 @@ function dice_initialize(container) {
 
     function init() {
         if (!name) {
-            window.location.href = 'login.html';
+            window.location.href = '/client/login.html';
             return;
         }
 
