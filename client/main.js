@@ -103,7 +103,7 @@ function dice_initialize(container) {
     }
 
     function event(player, response) {
-        var roll_result = response.result;
+        var roll_result = parseInt(response.result) + parseInt(response.constant);
         var dice = (response.set[0] || '').substring(1).trim();
         var bonus = '';
 
@@ -184,9 +184,10 @@ function dice_initialize(container) {
         var data = JSON.parse(evt.data);
         var player = data.name;
         var faces = data.faces;
+        var bonus = data.bonus;
         var result = data.result;
         var bonus = data.bonus;
-        const notation = { set: ['d' + faces], constant: bonus, result: [result], error: false };
+        const notation = { set: ['d' + faces], constant: bonus, result: [result - bonus], error: false };
 
         function notation_getter(response) {
             return notation;
