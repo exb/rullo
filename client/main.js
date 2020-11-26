@@ -58,8 +58,6 @@ function dice_initialize(container) {
     box.animate_selector = false;
 
     $t.bind(window, 'resize', function() {
-        // canvas.style.width = window.innerWidth - 1 + 'px';
-        // canvas.style.height = window.innerHeight - 1 + 'px';
         box.reinit(canvas, { w: canvas.offsetWidth, h: canvas.offsetHeight });
     });
 
@@ -67,7 +65,7 @@ function dice_initialize(container) {
         // do here rpc call or whatever to get your own result of throw.
         // then callback with array of your result, example:
         // callback([2, 2, 2, 2]); // for 4d6 where all dice values are 2.
-        callback();
+        callback(notation.result);
     }
 
     function notation_getter() {

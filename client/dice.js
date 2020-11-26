@@ -6,23 +6,6 @@
     this.use_true_random = true;
     this.frame_rate = 1 / 60;
 
-    function prepare_rnd(callback) {
-        if (!random_storage.length && $t.dice.use_true_random) {
-            try {
-                $t.rpc({ method: "random", n: 512 },
-                function(random_responce) {
-                    if (!random_responce.error)
-                        random_storage = random_responce.result.random.data;
-                    else $t.dice.use_true_random = false;
-                    callback();
-                });
-                return;
-            }
-            catch (e) { $t.dice.use_true_random = false; }
-        }
-        callback();
-    }
-
     function rnd() {
         return random_storage.length ? random_storage.pop() : Math.random();
     }
@@ -460,7 +443,6 @@
     var that = this;
 
     this.dice_box = function(container, dimentions) {
-        this.use_adapvite_timestep = true;
         this.animate_selector = true;
 
         this.dices = [];
@@ -621,6 +603,21 @@
         this.world.add(dice.body);
     }
 
+    this.dice_box.prototype.create_dice_pure = function(type, pos, velocity, angle, axis) {
+        var dice = that['create_' + type]();
+        dice.castShadow = true;
+        dice.dice_type = type;
+        dice.body = new CANNON.RigidBody(that.dice_mass[type],
+                dice.geometry.cannon_shape, this.dice_body_material);
+        dice.body.position.set(pos.x, pos.y, pos.z);
+        dice.body.quaternion.setFromAxisAngle(new CANNON.Vec3(axis.x, axis.y, axis.z), axis.a * Math.PI * 2);
+        dice.body.angularVelocity.set(angle.x, angle.y, angle.z);
+        dice.body.velocity.set(velocity.x, velocity.y, velocity.z);
+        dice.body.linearDamping = 0.1;
+        dice.body.angularDamping = 0.1;
+        return dice;
+    }
+
     this.dice_box.prototype.check_if_throw_finished = function() {
         var res = true;
         var e = 6;
@@ -688,16 +685,7 @@
         var time_diff = (time - this.last_time) / 1000;
         if (time_diff > 3) time_diff = that.frame_rate;
         ++this.iteration;
-        if (this.use_adapvite_timestep) {
-            while (time_diff > that.frame_rate * 1.1) {
-                this.world.step(that.frame_rate);
-                time_diff -= that.frame_rate;
-            }
-            this.world.step(time_diff);
-        }
-        else {
-            this.world.step(that.frame_rate);
-        }
+        this.world.step(that.frame_rate);
         for (var i in this.scene.children) {
             var interact = this.scene.children[i];
             if (interact.body != undefined) {
@@ -712,13 +700,13 @@
             if (this.callback) this.callback.call(this, get_dice_values(this.dices));
         }
         if (this.running == threadid) {
-            (function(t, tid, uat) {
-                if (!uat && time_diff < that.frame_rate) {
+            (function(t, tid) {
+                if (time_diff < that.frame_rate) {
                     setTimeout(function() { requestAnimationFrame(function() { t.__animate(tid); }); },
                         (that.frame_rate - time_diff) * 1000);
                 }
                 else requestAnimationFrame(function() { t.__animate(tid); });
-            })(this, threadid, this.use_adapvite_timestep);
+            })(this, threadid);
         }
     }
 
@@ -742,6 +730,17 @@
             this.create_dice(vectors[i].set, vectors[i].pos, vectors[i].velocity,
                     vectors[i].angle, vectors[i].axis);
         }
+    }
+
+    this.dice_box.prototype.prepare_dices_for_roll_pure = function(vectors) {
+        var dices = [];
+
+        for (var i in vectors) {
+            dices.push(this.create_dice_pure(vectors[i].set, vectors[i].pos, vectors[i].velocity,
+                    vectors[i].angle, vectors[i].axis));
+        }
+
+        return dices;
     }
 
     function shift_dice_faces(dice, value, res) {
@@ -769,7 +768,6 @@
     this.dice_box.prototype.roll = function(vectors, values, callback) {
         this.prepare_dices_for_roll(vectors);
         if (values != undefined && values.length) {
-            this.use_adapvite_timestep = false;
             var res = this.emulate_throw();
             this.prepare_dices_for_roll(vectors);
             for (var i in res)
@@ -781,69 +779,51 @@
         this.__animate(this.running);
     }
 
-    this.dice_box.prototype.__selector_animate = function(threadid) {
-        var time = (new Date()).getTime();
-        var time_diff = (time - this.last_time) / 1000;
-        if (time_diff > 3) time_diff = that.frame_rate;
-        var angle_change = 0.3 * time_diff * Math.PI * Math.min(24000 + threadid - time, 6000) / 6000;
-        if (angle_change < 0) this.running = false;
-        for (var i in this.dices) {
-            this.dices[i].rotation.y += angle_change;
-            this.dices[i].rotation.x += angle_change / 4;
-            this.dices[i].rotation.z += angle_change / 10;
+    this.dice_box.prototype.roll_ws = function(vectors, values, callback) {
+        if (values != undefined && values.length) {
+            var dices = this.prepare_dices_for_roll_pure(vectors);
+            // start - prepare_dices_for_roll
+            this.clear();
+            this.iteration = 0;
+            // end
+            // start - create_dice
+            dices.forEach((dice) => {
+                this.scene.add(dice);
+                this.dices.push(dice);
+                this.world.add(dice.body);
+            });
+            // end
+            var res = this.emulate_throw();
+            dices = this.prepare_dices_for_roll_pure(vectors);
+            // start - prepare_dices_for_roll
+            this.clear();
+            this.iteration = 0;
+            // end
+            // start - create_dice
+            dices.forEach((dice) => {
+                this.scene.add(dice);
+                this.dices.push(dice);
+                this.world.add(dice.body);
+            });
+            // end
+
+            for (var i in res)
+                shift_dice_faces(this.dices[i], values[i], res[i]); // pure
+
+            this.callback = callback;
+            this.running = (new Date()).getTime();
+            this.last_time = 0;
+            this.__animate(this.running);
         }
-        this.last_time = time;
-        this.renderer.render(this.scene, this.camera);
-        if (this.running == threadid) {
-            (function(t, tid) {
-                requestAnimationFrame(function() { t.__selector_animate(tid); });
-            })(this, threadid);
-        }
-    }
-
-    this.dice_box.prototype.search_dice_by_mouse = function(ev) {
-        var m = $t.get_mouse_coords(ev);
-        var intersects = (new THREE.Raycaster(this.camera.position,
-                    (new THREE.Vector3((m.x - this.cw) / this.aspect,
-                                       1 - (m.y - this.ch) / this.aspect, this.w / 9))
-                    .sub(this.camera.position).normalize())).intersectObjects(this.dices);
-        if (intersects.length) return intersects[0].object.userData;
-    }
-
-    this.dice_box.prototype.draw_selector = function() {
-        this.clear();
-        var step = this.w / 4.5;
-        this.pane = new THREE.Mesh(new THREE.PlaneGeometry(this.w * 6, this.h * 6, 1, 1),
-                new THREE.MeshPhongMaterial(that.selector_back_colors));
-        this.pane.receiveShadow = true;
-        this.pane.position.set(0, 0, 1);
-        this.scene.add(this.pane);
-
-        var mouse_captured = false;
-
-        for (var i = 0, pos = -3; i < that.known_types.length; ++i, ++pos) {
-            var dice = $t.dice['create_' + that.known_types[i]]();
-            dice.position.set(pos * step, 0, step * 0.5);
-            dice.castShadow = true;
-            dice.userData = that.known_types[i];
-            this.dices.push(dice); this.scene.add(dice);
-        }
-
-        this.running = (new Date()).getTime();
-        this.last_time = 0;
-        if (this.animate_selector) this.__selector_animate(this.running);
-        else this.renderer.render(this.scene, this.camera);
     }
 
     function throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll) {
-        var uat = $t.dice.use_adapvite_timestep;
         function roll(request_results) {
             if (after_roll) {
                 box.clear();
-                box.roll(vectors, request_results || notation.result, function(result) {
+                box.roll_ws(vectors, request_results || notation.result, function(result) {
                     if (after_roll) after_roll.call(box, notation, result);
                     box.rolling = false;
-                    $t.dice.use_adapvite_timestep = uat;
                 });
             }
         }
@@ -856,48 +836,13 @@
         else roll();
     }
 
-    this.dice_box.prototype.bind_mouse = function(container, notation_getter, before_roll, after_roll) {
-        var box = this;
-        $t.bind(container, ['mousedown', 'touchstart'], function(ev) {
-            ev.preventDefault();
-            box.mouse_time = (new Date()).getTime();
-            box.mouse_start = $t.get_mouse_coords(ev);
-        });
-        $t.bind(container, ['mouseup', 'touchend'], function(ev) {
-            if (box.rolling) return;
-            if (box.mouse_start == undefined) return;
-            ev.stopPropagation();
-            var m = $t.get_mouse_coords(ev);
-            var vector = { x: m.x - box.mouse_start.x, y: -(m.y - box.mouse_start.y) };
-            box.mouse_start = undefined;
-            var dist = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-            if (dist < Math.sqrt(box.w * box.h * 0.01)) return;
-            var time_int = (new Date()).getTime() - box.mouse_time;
-            if (time_int > 2000) time_int = 2000;
-            var boost = Math.sqrt((2500 - time_int) / 2500) * dist * 2;
-            prepare_rnd(function() {
-                throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll);
-            });
-        });
-    }
-
-    this.dice_box.prototype.bind_throw = function(button, notation_getter, before_roll, after_roll) {
-        var box = this;
-        $t.bind(button, ['mouseup', 'touchend'], function(ev) {
-            ev.stopPropagation();
-            box.start_throw(notation_getter, before_roll, after_roll);
-        });
-    }
-
     this.dice_box.prototype.start_throw = function(notation_getter, before_roll, after_roll) {
         var box = this;
         if (box.rolling) return;
-        prepare_rnd(function() {
-            var vector = { x: (rnd() * 2 - 1) * box.w, y: -(rnd() * 2 - 1) * box.h };
-            var dist = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
-            var boost = (rnd() + 3) * dist;
-            throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll);
-        });
+        var vector = { x: (rnd() * 2 - 1) * box.w, y: -(rnd() * 2 - 1) * box.h };
+        var dist = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+        var boost = (rnd() + 3) * dist;
+        throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll);
     }
 
 }).apply(teal.dice = teal.dice || {});
