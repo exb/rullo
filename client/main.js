@@ -196,7 +196,9 @@ function dice_initialize(container) {
         if (player === name) {
             box.start_throw(notation_getter, before_roll, after_roll);
         } else {
-            event(player, notation);
+            setTimeout(function () {
+                event(player, notation);
+            }, 3000);
         }
     }
 
@@ -217,17 +219,37 @@ function dice_initialize(container) {
         player_board.innerHtml = '';
     }
 
+    function connect(onConnect) {
+        var url = `wss://dicerz.herokuapp.com/ws?name=${name}`;
+        ws = new WebSocket(url);
+        ws.onopen = function() {
+            console.log('Socket is opened.');
+            onConnect && onConnect();
+        };
+        ws.onmessage = onMessage;
+        ws.onclose = function (e) {
+            console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
+
+            setTimeout(function() {
+                connect(onConnect);
+            }, 1000);
+        }
+
+        ws.onerror = function(err) {
+            console.error('Socket encountered error: ', err.message, 'Closing socket');
+            ws.close();
+        };
+    }
+
     function init() {
         if (!name) {
             window.location.href = '/client/login.html';
             return;
         }
 
-        var url = `wss://dicerz.herokuapp.com/ws?name=${name}`;
-        ws = new WebSocket(url);
-        ws.onmessage = onMessage;
-
-        document.body.style.visibility = 'visible';
+        connect(function() {
+            document.body.style.visibility = 'visible';
+        });
     }
 
     init();
